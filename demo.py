@@ -11,6 +11,7 @@ ngl_html = Template(nglviewer_template).substitute(
         STRUCTURE_URL='/app/static/dump.pdb',
         TRAJ_URL='/app/static/dump.nc',
         BACKGROUND_COLOR='#ffffff',
+        BODY_STYLE='box-shadow: 0 0 1px 1px #eee;padding: 0 8px;',
         AUTO_PLAY='false', # true | false
         PLAY_MODE='loop', # loop | once
     )
