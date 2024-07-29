@@ -1,223 +1,310 @@
 <html>
   <head>
     <script src="https://unpkg.com/ngl@2.2.2/dist/ngl.js"></script>
+    <style>
+      body::backdrop {
+        background: #fff;
+      }
+      #viewport {
+        width: 100%;
+        height: 400px;
+      }
+      #resetBtn {
+        position: absolute;
+        padding: 8px;
+        top: 0;
+        right: 36px;
+        background-color: #ffffffcc;
+        cursor: pointer;
+      }
+      #fullScreenBtn {
+        position: absolute;
+        padding: 8px;
+        top: 0;
+        right: 0;
+        background-color: #ffffffcc;
+        cursor: pointer;
+      }
+      #legend {
+        position: absolute;
+        bottom: 0;
+        right: 0;
+        padding: 8px;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        background-color: #ffffffcc;
+        max-height: 300px;
+        overflow-y: auto;
+      }
+    </style>
   </head>
   <body>
-    <div style="position: relative;">
-        <div id="viewport" style="width:100%; height:400px;"></div>
-        <div id="resetBtn" title="Reset view" style="position: absolute;padding: 8px;top: 0;right: 0;background-color: #ffffffcc;cursor: pointer;">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width:24px">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
-            </svg>
-        </div>
-        <div id="legend" style="position: absolute;bottom: 0;right: 0;padding: 8px;display: flex;flex-direction: column;gap: 4px; border: 1px solid #ddd; border-radius: 4px;background-color: #ffffffcc; max-height: 300px; overflow-y: auto;"></div>
+    <div style="position: relative">
+      <div id="viewport"></div>
+      <div id="resetBtn" title="Reset view">
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke-width="1.5"
+          stroke="currentColor"
+          style="width: 24px"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99"
+          />
+        </svg>
+      </div>
+      <div id="fullScreenBtn" title="Full screen"></div>
+      <div id="legend"></div>
     </div>
-    <div style="margin-top:12px;display:flex; align-items:center">
-      <div id="playBtn" style="padding:4px"></div>
-      <input id="slider" type="range" style="flex-grow:1" value="0" min="0" />
+    <div style="margin-top: 12px; display: flex; align-items: center">
+      <div id="playBtn" style="padding: 4px"></div>
+      <input id="slider" type="range" style="flex-grow: 1" value="0" min="0" />
     </div>
     <script>
-        // script for custom bond calculation
-        const AA1 = {
-            HIS: "H",
-            ARG: "R",
-            LYS: "K",
-            ILE: "I",
-            PHE: "F",
-            LEU: "L",
-            TRP: "W",
-            ALA: "A",
-            MET: "M",
-            PRO: "P",
-            CYS: "C",
-            ASN: "N",
-            VAL: "V",
-            GLY: "G",
-            SER: "S",
-            GLN: "Q",
-            TYR: "Y",
-            ASP: "D",
-            GLU: "E",
-            THR: "T",
-        
-            SEC: "U", // as per IUPAC definition
-            PYL: "O", // as per IUPAC definition
-        };
-        
-        const AA3 = Object.keys(AA1);
-        
-        const RnaBases = ["A", "C", "T", "G", "U", "I"];
-        
-        const DnaBases = ["DA", "DC", "DT", "DG", "DU", "DI"];
-        
-        const Bases = RnaBases.concat(DnaBases);
-        
-        const BondOrderTable = {
-            "HIS|CD2|CG": 2,
-            "HIS|CE1|ND1": 2,
-            "ARG|CZ|NH2": 2,
-            "PHE|CE1|CZ": 2,
-            "PHE|CD2|CE2": 2,
-            "PHE|CD1|CG": 2,
-            "TRP|CD1|CG": 2,
-            "TRP|CD2|CE2": 2,
-            "TRP|CE3|CZ3": 2,
-            "TRP|CH2|CZ2": 2,
-            "ASN|CG|OD1": 2,
-            "GLN|CD|OE1": 2,
-            "TYR|CD1|CG": 2,
-            "TYR|CD2|CE2": 2,
-            "TYR|CE1|CZ": 2,
-            "ASP|CG|OD1": 2,
-            "GLU|CD|OE1": 2,
-        
-            "G|C8|N7": 2,
-            "G|C4|C5": 2,
-            "G|C2|N3": 2,
-            "G|C6|O6": 2,
-            "C|C4|N3": 2,
-            "C|C5|C6": 2,
-            "C|C2|O2": 2,
-            "A|C2|N3": 2,
-            "A|C6|N1": 2,
-            "A|C4|C5": 2,
-            "A|C8|N7": 2,
-            "U|C5|C6": 2,
-            "U|C2|O2": 2,
-            "U|C4|O4": 2,
-        
-            "DG|C8|N7": 2,
-            "DG|C4|C5": 2,
-            "DG|C2|N3": 2,
-            "DG|C6|O6": 2,
-            "DC|C4|N3": 2,
-            "DC|C5|C6": 2,
-            "DC|C2|O2": 2,
-            "DA|C2|N3": 2,
-            "DA|C6|N1": 2,
-            "DA|C4|C5": 2,
-            "DA|C8|N7": 2,
-            "DT|C5|C6": 2,
-            "DT|C2|O2": 2,
-            "DT|C4|O4": 2,
-        };
-        
-        function getBondOrderFromTable( resname, atomname1, atomname2 ) {
-            [atomname1, atomname2] = atomname1 < atomname2 ? [atomname1, atomname2] : [atomname2, atomname1];
-            if (AA3.includes(resname) && atomname1 === "C" && atomname2 === "O") return 2;
-            if (Bases.includes(resname) && atomname1 === "OP1" && atomname2 === "P") return 2;
-            return BondOrderTable[`$${resname}|$${atomname1}|$${atomname2}`] || 1;
-        }
-        
+      // script for custom bond calculation
+      const AA1 = {
+        HIS: "H",
+        ARG: "R",
+        LYS: "K",
+        ILE: "I",
+        PHE: "F",
+        LEU: "L",
+        TRP: "W",
+        ALA: "A",
+        MET: "M",
+        PRO: "P",
+        CYS: "C",
+        ASN: "N",
+        VAL: "V",
+        GLY: "G",
+        SER: "S",
+        GLN: "Q",
+        TYR: "Y",
+        ASP: "D",
+        GLU: "E",
+        THR: "T",
 
-        // refer from: https://github.com/nglviewer/ngl/blob/master/src/structure/structure-utils.ts#L592-L649
-        function calculateResidueBonds(r) {
-            const structure = r;
-            const a1 = structure.getAtomProxy();
-            const a2 = structure.getAtomProxy();
-        
-            const count = r.atomCount;
-            const offset = 0;
-            const end = offset + count;
-            const end1 = end - 1;
-        
-            const atomIndices1 = [];
-            const atomIndices2 = [];
-            const bondOrders = [];
-        
-            const kdtree = new NGL.Kdtree(r, true);
-            const radius = 2.3;
-        
-            for (let i = offset; i < end1; ++i) {
-                a1.index = i;
-                const maxd = a1.covalent + radius + 0.3;
-                const nearestAtoms = kdtree.nearest(a1, Infinity, maxd * maxd); // TODO
-                const m = nearestAtoms.length;
-                for (let j = 0; j < m; ++j) {
-                    a2.index = nearestAtoms[j].index;
-                    if (a1.index < a2.index) {
-                    if (a1.connectedTo(a2)) {
-                        atomIndices1.push(a1.index - offset);
-                        atomIndices2.push(a2.index - offset);
-                        bondOrders.push(
-                            getBondOrderFromTable(a1.resname, a1.atomname, a2.atomname)
-                        );
-                    }
-                    }
-                }
+        SEC: "U", // as per IUPAC definition
+        PYL: "O", // as per IUPAC definition
+      };
+
+      const AA3 = Object.keys(AA1);
+
+      const RnaBases = ["A", "C", "T", "G", "U", "I"];
+
+      const DnaBases = ["DA", "DC", "DT", "DG", "DU", "DI"];
+
+      const Bases = RnaBases.concat(DnaBases);
+
+      const BondOrderTable = {
+        "HIS|CD2|CG": 2,
+        "HIS|CE1|ND1": 2,
+        "ARG|CZ|NH2": 2,
+        "PHE|CE1|CZ": 2,
+        "PHE|CD2|CE2": 2,
+        "PHE|CD1|CG": 2,
+        "TRP|CD1|CG": 2,
+        "TRP|CD2|CE2": 2,
+        "TRP|CE3|CZ3": 2,
+        "TRP|CH2|CZ2": 2,
+        "ASN|CG|OD1": 2,
+        "GLN|CD|OE1": 2,
+        "TYR|CD1|CG": 2,
+        "TYR|CD2|CE2": 2,
+        "TYR|CE1|CZ": 2,
+        "ASP|CG|OD1": 2,
+        "GLU|CD|OE1": 2,
+
+        "G|C8|N7": 2,
+        "G|C4|C5": 2,
+        "G|C2|N3": 2,
+        "G|C6|O6": 2,
+        "C|C4|N3": 2,
+        "C|C5|C6": 2,
+        "C|C2|O2": 2,
+        "A|C2|N3": 2,
+        "A|C6|N1": 2,
+        "A|C4|C5": 2,
+        "A|C8|N7": 2,
+        "U|C5|C6": 2,
+        "U|C2|O2": 2,
+        "U|C4|O4": 2,
+
+        "DG|C8|N7": 2,
+        "DG|C4|C5": 2,
+        "DG|C2|N3": 2,
+        "DG|C6|O6": 2,
+        "DC|C4|N3": 2,
+        "DC|C5|C6": 2,
+        "DC|C2|O2": 2,
+        "DA|C2|N3": 2,
+        "DA|C6|N1": 2,
+        "DA|C4|C5": 2,
+        "DA|C8|N7": 2,
+        "DT|C5|C6": 2,
+        "DT|C2|O2": 2,
+        "DT|C4|O4": 2,
+      };
+
+      function getBondOrderFromTable(resname, atomname1, atomname2) {
+        [atomname1, atomname2] =
+          atomname1 < atomname2
+            ? [atomname1, atomname2]
+            : [atomname2, atomname1];
+        if (AA3.includes(resname) && atomname1 === "C" && atomname2 === "O")
+          return 2;
+        if (Bases.includes(resname) && atomname1 === "OP1" && atomname2 === "P")
+          return 2;
+        return BondOrderTable[`$${resname}|$${atomname1}|$${atomname2}`] || 1;
+      }
+
+      // refer from: https://github.com/nglviewer/ngl/blob/master/src/structure/structure-utils.ts#L592-L649
+      function calculateResidueBonds(r) {
+        const structure = r;
+        const a1 = structure.getAtomProxy();
+        const a2 = structure.getAtomProxy();
+
+        const count = r.atomCount;
+        const offset = 0;
+        const end = offset + count;
+        const end1 = end - 1;
+
+        const atomIndices1 = [];
+        const atomIndices2 = [];
+        const bondOrders = [];
+
+        const kdtree = new NGL.Kdtree(r, true);
+        const radius = 2.3;
+
+        for (let i = offset; i < end1; ++i) {
+          a1.index = i;
+          const maxd = a1.covalent + radius + 0.3;
+          const nearestAtoms = kdtree.nearest(a1, Infinity, maxd * maxd); // TODO
+          const m = nearestAtoms.length;
+          for (let j = 0; j < m; ++j) {
+            a2.index = nearestAtoms[j].index;
+            if (a1.index < a2.index) {
+              if (a1.connectedTo(a2)) {
+                atomIndices1.push(a1.index - offset);
+                atomIndices2.push(a2.index - offset);
+                bondOrders.push(
+                  getBondOrderFromTable(a1.resname, a1.atomname, a2.atomname)
+                );
+              }
             }
-        
-            return {
-                atomIndices1: atomIndices1,
-                atomIndices2: atomIndices2,
-                bondOrders: bondOrders,
-            };
+          }
         }
+
+        return {
+          atomIndices1: atomIndices1,
+          atomIndices2: atomIndices2,
+          bondOrders: bondOrders,
+        };
+      }
     </script>
     <script>
-        const playIcon = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width:24px"><path fill-rule="evenodd" d="M4.5 5.653c0-1.427 1.529-2.33 2.779-1.643l11.54 6.347c1.295.712 1.295 2.573 0 3.286L7.28 19.99c-1.25.687-2.779-.217-2.779-1.643V5.653Z" clip-rule="evenodd" /></svg>'
+      // Common icon
+      const fullScreenIcon =
+        '<svg xmlns="http://www.w3.org/2000/svg" fill="none"viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"  style="width:24px"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" /></svg>';
+      const exitFullScreenIcon =
+        '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width:24px"><path stroke-linecap="round" stroke-linejoin="round" d="M9 9V4.5M9 9H4.5M9 9 3.75 3.75M9 15v4.5M9 15H4.5M9 15l-5.25 5.25M15 9h4.5M15 9V4.5M15 9l5.25-5.25M15 15h4.5M15 15v4.5m0-4.5 5.25 5.25" /></svg>';
+      const playIcon =
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width:24px"><path fill-rule="evenodd" d="M4.5 5.653c0-1.427 1.529-2.33 2.779-1.643l11.54 6.347c1.295.712 1.295 2.573 0 3.286L7.28 19.99c-1.25.687-2.779-.217-2.779-1.643V5.653Z" clip-rule="evenodd" /></svg>';
+      const pauseIcon =
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width:24px"><path fill-rule="evenodd" d="M6.75 5.25a.75.75 0 0 1 .75-.75H9a.75.75 0 0 1 .75.75v13.5a.75.75 0 0 1-.75.75H7.5a.75.75 0 0 1-.75-.75V5.25Zm7.5 0A.75.75 0 0 1 15 4.5h1.5a.75.75 0 0 1 .75.75v13.5a.75.75 0 0 1-.75.75H15a.75.75 0 0 1-.75-.75V5.25Z" clip-rule="evenodd" /></svg>';
+    </script>
+    <script>
+      document.body.style = "$BODY_STYLE";
+      let player;
+      let playStatus = false;
+      let fullScreenStatus = false;
 
-        const pauseIcon = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width:24px"><path fill-rule="evenodd" d="M6.75 5.25a.75.75 0 0 1 .75-.75H9a.75.75 0 0 1 .75.75v13.5a.75.75 0 0 1-.75.75H7.5a.75.75 0 0 1-.75-.75V5.25Zm7.5 0A.75.75 0 0 1 15 4.5h1.5a.75.75 0 0 1 .75.75v13.5a.75.75 0 0 1-.75.75H15a.75.75 0 0 1-.75-.75V5.25Z" clip-rule="evenodd" /></svg>'
+      const $$playBtn = document.getElementById("playBtn");
+      const $$slider = document.getElementById("slider");
+      const $$legend = document.getElementById("legend");
+      const $$resetBtn = document.getElementById("resetBtn");
+      const $$fullScreenBtn = document.getElementById("fullScreenBtn");
+      const $$viewport = document.getElementById("viewport");
 
-        document.body.style="$BODY_STYLE"
-        let player;
-        let playStatus = false;
-
-        const $$playBtn = document.getElementById("playBtn")
-        const $$slider = document.getElementById("slider")
-        const $$legend = document.getElementById("legend")
-        const $$resetBtn = document.getElementById("resetBtn")
-
-        const handlePlayStatusChange = (status) => {
+      const handlePlayStatusChange = (status) => {
         playStatus = status;
         if (playStatus) {
-            $$playBtn.innerHTML = pauseIcon;
+          $$playBtn.innerHTML = pauseIcon;
         } else {
-            $$playBtn.innerHTML = playIcon;
+          $$playBtn.innerHTML = playIcon;
         }
-        }
+      };
 
-        const handlePlayFrameChange = (value, max) => {
-            // console.log(value, max, $$slider.max)
-            $$slider.value = value;
-            $$slider.setAttribute('max', max)
-        }
+      const handlePlayFrameChange = (value, max) => {
+        // console.log(value, max, $$slider.max)
+        $$slider.value = value;
+        $$slider.setAttribute("max", max);
+      };
 
-        const handleSliderChange = (evt) => {
-            const value = evt.target.value;
-            if (!player) {
-                return;
-            }
-            // console.log(player.traj.currentFrame, value)
-            if (player.traj.currentFrame !== value) {
-                player.traj.setFrame(value);
-            }
+      const handleSliderChange = (evt) => {
+        const value = evt.target.value;
+        if (!player) {
+          return;
         }
-
-        const handlePlayBtnClick = () => {
-            // console.log({playStatus})
-            if (playStatus) {
-                
-                player.pause();
-                handlePlayStatusChange(false)
-            } else {
-                player.play();
-                handlePlayStatusChange(true)
-            }
+        // console.log(player.traj.currentFrame, value)
+        if (player.traj.currentFrame !== value) {
+          player.traj.setFrame(value);
         }
+      };
 
-        $$playBtn.addEventListener("click", handlePlayBtnClick);
-        $$slider.addEventListener("input", handleSliderChange);
-        $$slider.addEventListener("mousedown", () => {
+      const handlePlayBtnClick = () => {
+        // console.log({playStatus})
+        if (playStatus) {
+          player.pause();
+          handlePlayStatusChange(false);
+        } else {
+          player.play();
+          handlePlayStatusChange(true);
+        }
+      };
+
+      const handleFullScreenIconClick = (status) => {
+        fullScreenStatus = status;
+        if (fullScreenStatus) {
+          $$fullScreenBtn.innerHTML = exitFullScreenIcon;
+          $$fullScreenBtn.title = "Exit full screen";
+          $$viewport.style.minHeight = "90vh";
+        } else {
+          $$fullScreenBtn.innerHTML = fullScreenIcon;
+          $$fullScreenBtn.title = "Full screen";
+          $$viewport.style.minHeight = "";
+        }
+      };
+
+      handleFullScreenIconClick(false);
+      $$playBtn.addEventListener("click", handlePlayBtnClick);
+      $$slider.addEventListener("input", handleSliderChange);
+      $$slider.addEventListener("mousedown", () => {
         if (player) {
-            player.pause();
+          player.pause();
         }
-        });
-        $$slider.addEventListener("mouseup", () => {
+      });
+      $$slider.addEventListener("mouseup", () => {
         if (player && playStatus) {
-            player.play();
+          player.play();
         }
-        });
+      });
+      $$fullScreenBtn.addEventListener("click", () => {
+        if (fullScreenStatus) {
+          document.exitFullscreen();
+          handleFullScreenIconClick(false);
+        } else {
+          document.body.requestFullscreen();
+          handleFullScreenIconClick(true);
+        }
+      });
 
       const stage = new NGL.Stage("viewport", {
         backgroundColor: "$BACKGROUND_COLOR",
@@ -227,57 +314,65 @@
         clipFar: 100000,
         fogNear: 0.01,
         fogFar: 100000,
-        });
+      });
 
-      window.addEventListener( "resize", function( event ){
-            stage.handleResize();
-      }, false );
+      window.addEventListener(
+        "resize",
+        function (event) {
+          stage.handleResize();
+        },
+        false
+      );
 
-      const legendItemRender = (atom) => `<div style="display: flex; gap: 16px; align-items: center;">
+      const legendItemRender = (
+        atom
+      ) => `<div style="display: flex; gap: 16px; align-items: center;">
         <div style="width: 16px; height: 16px; border-radius: 8px; box-shadow: 0 1px 2px 1px #aaa; background-color: $${atom.color};"></div>
         <div>$${atom.element}</div>
-      </div>`
+      </div>`;
 
       stage.loadFile("$STRUCTURE_URL").then(function (o) {
-        const bonds = calculateResidueBonds((o).structure);
+        const bonds = calculateResidueBonds(o.structure);
         // console.log({bonds});
 
         bonds.atomIndices1.forEach(function (atom1Index, i) {
-            const atom1 = (o).structure.getAtomProxy(atom1Index);
-            const atom2 = (o).structure.getAtomProxy(bonds.atomIndices2[i]);
-            if (atom1 && atom2) {
-            (o).structure.bondStore.addBond(
-                atom1,
-                atom2,
-                bonds.bondOrders[i]
-            );
-            }
+          const atom1 = o.structure.getAtomProxy(atom1Index);
+          const atom2 = o.structure.getAtomProxy(bonds.atomIndices2[i]);
+          if (atom1 && atom2) {
+            o.structure.bondStore.addBond(atom1, atom2, bonds.bondOrders[i]);
+          }
         });
         // o.addRepresentation("ball+stick") //, {radiusType: "covalent"});
         o.addRepresentation("licorice", {
           sele: "not(_li)",
         });
-  
+
         o.addRepresentation("ball+stick", {
           sele: "_li",
           radiusType: "covalent",
-          radiusScale: 0.2
+          radiusScale: 0.2,
         });
-  
+
         o.updateRepresentations({ what: { bonds: true } });
         o.autoView();
 
-        o.structure.atomMap.list.sort((a,b) => a.number > b.number ? 1 : -1)
-        const atomColorMap = o.structure.atomMap.list.map(item => {
-            const element = item.element;
-            const color = "#" + NGL.ColormakerRegistry.getScheme({scheme: "element"}).atomColor(item).toString(16);
-            return {element, color}
-        })
+        o.structure.atomMap.list.sort((a, b) => (a.number > b.number ? 1 : -1));
+        const atomColorMap = o.structure.atomMap.list.map((item) => {
+          const element = item.element;
+          const color =
+            "#" +
+            NGL.ColormakerRegistry.getScheme({ scheme: "element" })
+              .atomColor(item)
+              .toString(16);
+          return { element, color };
+        });
 
-        $$legend.innerHTML=`$${atomColorMap.map(atom => legendItemRender(atom)).join("")}`
-        $$resetBtn.addEventListener('click', () => {
-            o.autoView();
-        })
+        $$legend.innerHTML = `$${atomColorMap
+          .map((atom) => legendItemRender(atom))
+          .join("")}`;
+        $$resetBtn.addEventListener("click", () => {
+          o.autoView();
+        });
 
         // console.log(o, atomColorMap)
         // console.log(NGL.ColormakerRegistry.getScheme({scheme: "element"}).atomColor(o.structure.atomMap.list[0]))
@@ -294,13 +389,13 @@
             mode: "$PLAY_MODE",
             // direction: "bounce",
           });
-          handlePlayStatusChange(false)
+          handlePlayStatusChange(false);
           if ($AUTO_PLAY) {
             player.play();
-            handlePlayStatusChange(true)
+            handlePlayStatusChange(true);
           }
-          player.traj.signals.frameChanged.add(value => {
-            handlePlayFrameChange(value, frames.coordinates.length - 1)
+          player.traj.signals.frameChanged.add((value) => {
+            handlePlayFrameChange(value, frames.coordinates.length - 1);
           });
         });
       });
