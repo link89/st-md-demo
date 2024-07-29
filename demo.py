@@ -106,8 +106,11 @@ nglviewer_template = """
             // mode: "once",
             // direction: "bounce",
           });
-          player.play();
-          handlePlayStatusChange(true)
+          handlePlayStatusChange(false)
+          if ($AUTO_PLAY) {
+            player.play();
+            handlePlayStatusChange(true)
+          }
           player.traj.signals.frameChanged.add(value => {
             handlePlayFrameChange(value, frames.coordinates.length)
           });
@@ -120,9 +123,10 @@ nglviewer_template = """
 
 
 ngl_html = Template(nglviewer_template).substitute(
-        STRUCTURE_URL='/app/static/dump.cif',
+        STRUCTURE_URL='/app/static/dump.pdb',
         TRAJ_URL='/app/static/dump.nc',
-        BACKGROUND_COLOR='#ffffff'
+        BACKGROUND_COLOR='#ffffff',
+        AUTO_PLAY='false' # true | false
     )
 
 st_components.html(ngl_html, height=600, width=600)
