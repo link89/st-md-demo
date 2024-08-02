@@ -306,6 +306,13 @@
         }
       });
 
+      document.addEventListener("fullscreenchange", () => {
+        const isFullScreen = document.fullScreen || document.mozFullScreen || document.webkitIsFullScreen;
+        if (!isFullScreen) {
+          handleFullScreenIconClick(false);
+        }
+      })
+
       const stage = new NGL.Stage("viewport", {
         backgroundColor: "$BACKGROUND_COLOR",
         clipMode: "camera",
