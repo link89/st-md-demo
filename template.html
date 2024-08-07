@@ -306,6 +306,13 @@
         }
       });
 
+      document.addEventListener("fullscreenchange", () => {
+        const isFullScreen = document.fullScreen || document.mozFullScreen || document.webkitIsFullScreen;
+        if (!isFullScreen) {
+          handleFullScreenIconClick(false);
+        }
+      })
+
       const stage = new NGL.Stage("viewport", {
         backgroundColor: "$BACKGROUND_COLOR",
         clipMode: "camera",
@@ -324,11 +331,13 @@
         false
       );
 
+      const elementFormat = (element) => element[0].toUpperCase() + element.slice(1).toLowerCase();
+
       const legendItemRender = (
         atom
       ) => `<div style="display: flex; gap: 16px; align-items: center;">
         <div style="width: 16px; height: 16px; border-radius: 8px; box-shadow: 0 1px 2px 1px #aaa; background-color: $${atom.color};"></div>
-        <div>$${atom.element}</div>
+        <div>$${elementFormat(atom.element || " ")}</div>
       </div>`;
 
       stage.loadFile("$STRUCTURE_URL").then(function (o) {
