@@ -231,6 +231,14 @@
       const TRAJ_URL = "$TRAJ_URL"; // optional
       const PLAY_MODE = "$PLAY_MODE"; // optional, e.g. "loop" | "once"
       const AUTO_PLAY = $AUTO_PLAY; // optional, e.g. true | false
+      /* DEFAULT_MATRIX is optional, e.g. [1,0,0,0, 0,1,0,0, 0,0,1,0, 50,0,0,1]
+         eq. [1 0 0 50
+              0 1 0 0
+              0 0 1 0
+              0 0 0 1]
+         More info: https://threejs.org/docs/#api/en/math/Matrix4
+      */
+      const DEFAULT_MATRIX = $DEFAULT_MATRIX; 
 
       // global variables
       document.body.style = BODY_STYLE;
@@ -399,7 +407,22 @@
         });
 
         o.updateRepresentations({ what: { bonds: true } });
-        o.autoView();
+
+        o.stage.viewerControls.signals.changed.add(() => {
+          const p = stage.viewerControls.getOrientation().toArray()
+          window._orientation = p;
+        })
+
+        const resetView = () => {
+          if (DEFAULT_MATRIX instanceof Array && DEFAULT_MATRIX.length === 16) {
+            o.stage.viewerControls.orient(DEFAULT_MATRIX);
+          } else {
+            console.log("DEFAULT_MATRIX mistake:", DEFAULT_MATRIX)
+            o.autoView();
+          }
+        }
+
+        resetView();
 
         o.structure.atomMap.list.sort((a, b) => (a.number > b.number ? 1 : -1));
         const elementSet = new Set();
@@ -419,7 +442,7 @@
 
         legendProcess(atomColorMap);
         $$resetBtn.addEventListener("click", () => {
-          o.autoView();
+          resetView();
         });
 
         // console.log(o, atomColorMap)
