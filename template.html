@@ -366,15 +366,18 @@
         o.autoView();
 
         o.structure.atomMap.list.sort((a, b) => (a.number > b.number ? 1 : -1));
+        const elementSet = new Set();
         const atomColorMap = o.structure.atomMap.list.map((item) => {
           const element = item.element;
+          if (elementSet.has(element)) return;
+          elementSet.add(element);
           const color =
             "#" +
             NGL.ColormakerRegistry.getScheme({ scheme: "element" })
               .atomColor(item)
               .toString(16);
           return { element, color };
-        });
+        }).filter(item => !!item);
 
         $$legend.innerHTML = `$${atomColorMap
           .map((atom) => legendItemRender(atom))
