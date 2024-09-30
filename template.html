@@ -239,6 +239,13 @@
          More info: https://threejs.org/docs/#api/en/math/Matrix4
       */
       const DEFAULT_MATRIX = $DEFAULT_MATRIX; 
+      /* REPRESENTATIONS is optional, e.g. [
+        {"type": "ball+stick", "params": {"sele": "_li", "radiusType": "covalent", "radiusScale": 0.2,}}, 
+        {"type": "licorice", "params": {"sele": "not(_li)"}}
+      ]
+         More info: https://nglviewer.org/ngl/api/manual/molecular-representations.html
+      */
+      const REPRESENTATIONS = $REPRESENTATIONS;
 
       // global variables
       document.body.style = BODY_STYLE;
@@ -396,15 +403,12 @@
           }
         });
         // o.addRepresentation("ball+stick") //, {radiusType: "covalent"});
-        o.addRepresentation("licorice", {
-          sele: "not(_li)",
-        });
-
-        o.addRepresentation("ball+stick", {
-          sele: "_li",
-          radiusType: "covalent",
-          radiusScale: 0.2,
-        });
+        if (REPRESENTATIONS instanceof Array && REPRESENTATIONS.length > 0) {
+          REPRESENTATIONS.forEach((rep) => {
+            if (!rep.type) return;
+            o.addRepresentation(rep.type, rep.params);
+          });
+        }
 
         o.updateRepresentations({ what: { bonds: true } });
 
