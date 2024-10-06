@@ -63,7 +63,10 @@
       <div id="fullScreenBtn" title="Full screen"></div>
       <div id="legend"></div>
     </div>
-    <div style="margin-top: 12px; display: flex; align-items: center">
+    <div
+      id="playerControl"
+      style="margin-top: 12px; display: none; align-items: center"
+    >
       <div id="playBtn" style="padding: 4px"></div>
       <input id="slider" type="range" style="flex-grow: 1" value="0" min="0" />
     </div>
@@ -221,17 +224,82 @@
         '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width:24px"><path fill-rule="evenodd" d="M6.75 5.25a.75.75 0 0 1 .75-.75H9a.75.75 0 0 1 .75.75v13.5a.75.75 0 0 1-.75.75H7.5a.75.75 0 0 1-.75-.75V5.25Zm7.5 0A.75.75 0 0 1 15 4.5h1.5a.75.75 0 0 1 .75.75v13.5a.75.75 0 0 1-.75.75H15a.75.75 0 0 1-.75-.75V5.25Z" clip-rule="evenodd" /></svg>';
     </script>
     <script>
-      document.body.style = "$BODY_STYLE";
+      // Input data
+      const BODY_STYLE = "$BODY_STYLE"; // optional, e.g. "background-color: #f0f0f0;"
+      const BACKGROUND_COLOR = "$BACKGROUND_COLOR"; // optional, e.g. "#f0f0f0"
+      const STRUCTURE_URL = "$STRUCTURE_URL"; // require
+      const TRAJ_URL = "$TRAJ_URL"; // optional
+      const PLAY_MODE = "$PLAY_MODE"; // optional, e.g. "loop" | "once"
+      const AUTO_PLAY = $AUTO_PLAY; // optional, e.g. true | false
+      /* DEFAULT_MATRIX is optional, e.g. [1,0,0,0, 0,1,0,0, 0,0,1,0, 50,0,0,1]
+         eq. [1 0 0 50
+              0 1 0 0
+              0 0 1 0
+              0 0 0 1]
+         More info: https://threejs.org/docs/#api/en/math/Matrix4
+      */
+      const DEFAULT_MATRIX = $DEFAULT_MATRIX; 
+      /* REPRESENTATIONS is optional, e.g. [
+        {"type": "ball+stick", "params": {"sele": "_li", "radiusType": "covalent", "radiusScale": 0.2,}}, 
+        {"type": "licorice", "params": {"sele": "not(_li)"}}
+      ]
+         More info: https://nglviewer.org/ngl/api/manual/molecular-representations.html
+      */
+      const REPRESENTATIONS = $REPRESENTATIONS;
+
+      // global variables
+      document.body.style = BODY_STYLE;
+      const $$viewport = document.getElementById("viewport");
+    </script>
+    <script>
+      // Full screen process
+      let fullScreenStatus = false;
+      const $$fullScreenBtn = document.getElementById("fullScreenBtn");
+
+      const handleFullScreenIconClick = (status) => {
+        fullScreenStatus = status;
+        if (fullScreenStatus) {
+          $$fullScreenBtn.innerHTML = exitFullScreenIcon;
+          $$fullScreenBtn.title = "Exit full screen";
+          $$viewport.style.minHeight = "90vh";
+        } else {
+          $$fullScreenBtn.innerHTML = fullScreenIcon;
+          $$fullScreenBtn.title = "Full screen";
+          $$viewport.style.minHeight = "";
+        }
+      };
+
+      handleFullScreenIconClick(false);
+      $$fullScreenBtn.addEventListener("click", () => {
+        if (fullScreenStatus) {
+          document.exitFullscreen();
+          handleFullScreenIconClick(false);
+        } else {
+          document.body.requestFullscreen();
+          handleFullScreenIconClick(true);
+        }
+      });
+
+      document.addEventListener("fullscreenchange", () => {
+        const isFullScreen =
+          document.fullScreen ||
+          document.mozFullScreen ||
+          document.webkitIsFullScreen;
+        if (!isFullScreen) {
+          handleFullScreenIconClick(false);
+        }
+      });
+    </script>
+    <script>
+      // Play control process
       let player;
       let playStatus = false;
-      let fullScreenStatus = false;
-
       const $$playBtn = document.getElementById("playBtn");
       const $$slider = document.getElementById("slider");
-      const $$legend = document.getElementById("legend");
-      const $$resetBtn = document.getElementById("resetBtn");
-      const $$fullScreenBtn = document.getElementById("fullScreenBtn");
-      const $$viewport = document.getElementById("viewport");
+      const $$playerControl = document.getElementById("playerControl");
+      if (TRAJ_URL) {
+        $$playerControl.style.display = "flex";
+      }
 
       const handlePlayStatusChange = (status) => {
         playStatus = status;
@@ -270,20 +338,6 @@
         }
       };
 
-      const handleFullScreenIconClick = (status) => {
-        fullScreenStatus = status;
-        if (fullScreenStatus) {
-          $$fullScreenBtn.innerHTML = exitFullScreenIcon;
-          $$fullScreenBtn.title = "Exit full screen";
-          $$viewport.style.minHeight = "90vh";
-        } else {
-          $$fullScreenBtn.innerHTML = fullScreenIcon;
-          $$fullScreenBtn.title = "Full screen";
-          $$viewport.style.minHeight = "";
-        }
-      };
-
-      handleFullScreenIconClick(false);
       $$playBtn.addEventListener("click", handlePlayBtnClick);
       $$slider.addEventListener("input", handleSliderChange);
       $$slider.addEventListener("mousedown", () => {
@@ -296,25 +350,31 @@
           player.play();
         }
       });
-      $$fullScreenBtn.addEventListener("click", () => {
-        if (fullScreenStatus) {
-          document.exitFullscreen();
-          handleFullScreenIconClick(false);
-        } else {
-          document.body.requestFullscreen();
-          handleFullScreenIconClick(true);
-        }
-      });
+    </script>
+    <script>
+      function legendProcess(atomColorMap, id = "legend") {
+        const $$legend = document.getElementById("legend");
+        const elementFormat = (element) =>
+          element[0].toUpperCase() + element.slice(1).toLowerCase();
 
-      document.addEventListener("fullscreenchange", () => {
-        const isFullScreen = document.fullScreen || document.mozFullScreen || document.webkitIsFullScreen;
-        if (!isFullScreen) {
-          handleFullScreenIconClick(false);
-        }
-      })
+        const legendItemRender = (
+          atom
+        ) => `<div style="display: flex; gap: 16px; align-items: center;">
+          <div style="width: 16px; height: 16px; border-radius: 8px; box-shadow: 0 1px 2px 1px #aaa; background-color: $${
+            atom.color
+          };"></div>
+          <div>$${elementFormat(atom.element || " ")}</div>
+        </div>`;
+
+        $$legend.innerHTML = `$${atomColorMap
+          .map((atom) => legendItemRender(atom))
+          .join("")}`;
+      }
+
+      const $$resetBtn = document.getElementById("resetBtn");
 
       const stage = new NGL.Stage("viewport", {
-        backgroundColor: "$BACKGROUND_COLOR",
+        backgroundColor: BACKGROUND_COLOR,
         clipMode: "camera",
         clipScale: "absolute",
         clipNear: 0.01,
@@ -331,16 +391,7 @@
         false
       );
 
-      const elementFormat = (element) => element[0].toUpperCase() + element.slice(1).toLowerCase();
-
-      const legendItemRender = (
-        atom
-      ) => `<div style="display: flex; gap: 16px; align-items: center;">
-        <div style="width: 16px; height: 16px; border-radius: 8px; box-shadow: 0 1px 2px 1px #aaa; background-color: $${atom.color};"></div>
-        <div>$${elementFormat(atom.element || " ")}</div>
-      </div>`;
-
-      stage.loadFile("$STRUCTURE_URL").then(function (o) {
+      stage.loadFile(STRUCTURE_URL).then(function (o) {
         const bonds = calculateResidueBonds(o.structure);
         // console.log({bonds});
 
@@ -352,41 +403,58 @@
           }
         });
         // o.addRepresentation("ball+stick") //, {radiusType: "covalent"});
-        o.addRepresentation("licorice", {
-          sele: "not(_li)",
-        });
-
-        o.addRepresentation("ball+stick", {
-          sele: "_li",
-          radiusType: "covalent",
-          radiusScale: 0.2,
-        });
+        if (REPRESENTATIONS instanceof Array && REPRESENTATIONS.length > 0) {
+          REPRESENTATIONS.forEach((rep) => {
+            if (!rep.type) return;
+            o.addRepresentation(rep.type, rep.params);
+          });
+        }
 
         o.updateRepresentations({ what: { bonds: true } });
-        o.autoView();
+
+        o.stage.viewerControls.signals.changed.add(() => {
+          const p = stage.viewerControls.getOrientation().toArray()
+          window._orientation = p;
+        })
+
+        const resetView = () => {
+          if (DEFAULT_MATRIX instanceof Array && DEFAULT_MATRIX.length === 16) {
+            o.stage.viewerControls.orient(DEFAULT_MATRIX);
+          } else {
+            console.log("DEFAULT_MATRIX mistake:", DEFAULT_MATRIX)
+            o.autoView();
+          }
+        }
+
+        resetView();
 
         o.structure.atomMap.list.sort((a, b) => (a.number > b.number ? 1 : -1));
-        const atomColorMap = o.structure.atomMap.list.map((item) => {
-          const element = item.element;
-          const color =
-            "#" +
-            NGL.ColormakerRegistry.getScheme({ scheme: "element" })
-              .atomColor(item)
-              .toString(16);
-          return { element, color };
-        });
+        const elementSet = new Set();
+        const atomColorMap = o.structure.atomMap.list
+          .map((item) => {
+            const element = item.element;
+            if (elementSet.has(element)) return;
+            elementSet.add(element);
+            const color =
+              "#" +
+              NGL.ColormakerRegistry.getScheme({ scheme: "element" })
+                .atomColor(item)
+                .toString(16);
+            return { element, color };
+          })
+          .filter((item) => !!item);
 
-        $$legend.innerHTML = `$${atomColorMap
-          .map((atom) => legendItemRender(atom))
-          .join("")}`;
+        legendProcess(atomColorMap);
         $$resetBtn.addEventListener("click", () => {
-          o.autoView();
+          resetView();
         });
 
         // console.log(o, atomColorMap)
         // console.log(NGL.ColormakerRegistry.getScheme({scheme: "element"}).atomColor(o.structure.atomMap.list[0]))
-
-        NGL.autoLoad("$TRAJ_URL").then(function (frames) {
+        if (!TRAJ_URL) {
+          return;
+        }
+        NGL.autoLoad(TRAJ_URL).then(function (frames) {
           const traj = o.addTrajectory(frames).trajectory;
           player = new NGL.TrajectoryPlayer(traj, {
             step: 1,
@@ -395,11 +463,11 @@
             start: 0,
             end: traj.numframes,
             interpolateType: "linear",
-            mode: "$PLAY_MODE",
+            mode: PLAY_MODE,
             // direction: "bounce",
           });
           handlePlayStatusChange(false);
-          if ($AUTO_PLAY) {
+          if (AUTO_PLAY) {
             player.play();
             handlePlayStatusChange(true);
           }
